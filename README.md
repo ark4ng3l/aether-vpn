@@ -1,17 +1,17 @@
-# ⚡ Universal VPN Hub & Manager
+# ⚡ Aether VPN Hub & Manager
 
 > **سامانه یکپارچه، سبک و مدرن مدیریت پروکسی و فیلترشکن با تلفیق برترین فناوری‌های ضد‌سانسور و اتصال به منابع ۱۰۰٪ رایگان**  
-> *An all-in-one lightweight proxy management hub & client ecosystem combining next-gen anti-censorship tools with built-in free resources.*
+> *Aether VPN: An all-in-one lightweight proxy management hub & client ecosystem combining next-gen anti-censorship tools with built-in free resources.*
 
 ---
 
-## 🌟 درباره پروژه (About the Project)
+## 🌟 درباره پروژه (About Aether VPN)
 
-پروژه **Universal VPN Hub & Manager** با هدف ایجاد یک راه‌حل جامع، در دسترس و بدون هزینه برای عبور از اختلالات شدید اینترنت طراحی شده است. این سیستم با ادغام نقاط قوت برترین پروژه‌های مطرح جامعه متن‌باز، امکان مدیریت، تولید و توزیع کانفیگ‌های اختصاصی و رایگان را به سادگی فراهم می‌کند.
+پروژه **Aether VPN** با هدف ایجاد یک راه‌حل جامع، در دسترس و بدون هزینه برای عبور از اختلالات شدید اینترنت طراحی شده است. این سیستم با ادغام نقاط قوت برترین پروژه‌های مطرح جامعه متن‌باز، امکان مدیریت، تولید و توزیع کانفیگ‌های اختصاصی و رایگان را به سادگی فراهم می‌کند.
 
 ```mermaid
 flowchart TD
-    User["کلاینت / گوشی / کامپیوتر"] -->|"دریافت هوشمند (/api/sub)"| Hub["Universal VPN Hub"]
+    User["کلاینت / گوشی / کامپیوتر"] -->|"دریافت هوشمند (/api/sub)"| Hub["Aether VPN Hub"]
     
     subgraph DeployOptions["روش‌های استقرار"]
         Hub --> Local["لوکال / اپلیکیشن (Port 3101)"]
@@ -60,7 +60,7 @@ python server.py
 
 | پروژه / مرجع | توسعه‌دهنده / سازمان | نقش و الهام در این پروژه |
 | :--- | :--- | :--- |
-| **[BPB-Worker-Panel](https://github.com/bia-pain-bache/BPB-Worker-Panel)** | **@bia-pain-bache** | **شاهکار و پیشگام معماری پنل‌های سرورلس و استقرار پنل وب روی Cloudflare Workers/Pages و دیتابیس KV** |
+| **[BPB-Worker-Panel](https://github.com/bia-pain-bache/BPB-Worker-Panel)** | **@bia-pain-bache** | **شاهکار و پیشگام معماری پنل‌های سرورلس و استقرار پنل وب روی Cloudflare Pages/KV** |
 | **[Xray-core](https://github.com/XTLS/Xray-core)** | **Team XTLS & @rprx** | خالق پروتکل‌های انقلابی VLESS و REALITY و موتور پردازش ترافیک مدرن |
 | **[PurVPN](https://github.com/davudsedft/purvpn)** | **@davudsedft** | الهام‌بخش رویکرد همه‌فن‌حریف (All-in-One)، تونلینگ ترکیبی و پیاده‌سازی WARP |
 | **[Hiddify-Manager](https://github.com/hiddify/Hiddify-Manager)** | **@hiddify Team** | الگوی طلایی استقرار خودکار، معماری چندکاربره و پرتال هوشمند سابسکریپشن |

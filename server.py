@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat,
 import qrcode
 from io import BytesIO
 
-app = FastAPI(title="Universal VPN Hub & Manager")
+app = FastAPI(title="Aether VPN Hub & Manager")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,7 +41,6 @@ CACHE = {
 
 @app.get("/api/status")
 def get_status():
-    # Local LAN IP for phone connection
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     lan_ip = "127.0.0.1"
     try:
@@ -54,7 +53,7 @@ def get_status():
 
     return {
         "status": "online",
-        "app_name": "Universal VPN Hub & Manager",
+        "app_name": "Aether VPN Hub & Manager",
         "version": "1.0.0",
         "lan_ip": lan_ip,
         "port": 3101,
@@ -66,7 +65,6 @@ def get_status():
 @app.get("/api/warp/generate")
 def generate_warp():
     try:
-        # Generate Curve25519 keys
         priv = x25519.X25519PrivateKey.generate()
         pub = priv.public_key()
         priv_b64 = base64.b64encode(priv.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())).decode()
@@ -96,7 +94,6 @@ def generate_warp():
             with urllib.request.urlopen(req, timeout=8) as resp:
                 reg_data = json.loads(resp.read().decode('utf-8'))
         except Exception:
-            # Fallback to local proxy if direct connection to Cloudflare API was restricted
             proxy_handler = urllib.request.ProxyHandler({'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'})
             opener = urllib.request.build_opener(proxy_handler)
             with opener.open(req, timeout=8) as resp:
@@ -109,7 +106,6 @@ def generate_warp():
         v4_addr = addresses.get("v4", "172.16.0.2/32")
         v6_addr = addresses.get("v6", "")
 
-        # Default fast endpoint
         best_endpoint = "162.159.192.1:2408"
 
         clean_addrs = f"{v4_addr}"
@@ -121,7 +117,7 @@ def generate_warp():
             f"?publickey={urllib.parse.quote(cf_public_key)}"
             f"&address={urllib.parse.quote(clean_addrs)}"
             f"&reserved=0%2C0%2C0&mtu=1420"
-            f"#%E2%9A%A1%20WARP%20Free%20%7C%20Universal%20VPN"
+            f"#%E2%9A%A1%20Aether%20WARP%20%7C%20Free%20Clean%20IP"
         )
 
         conf_text = f"""[Interface]
@@ -201,8 +197,7 @@ def get_free_subs(limit: int = 30):
         for line in lines:
             line = line.strip()
             if line.startswith("vless://"):
-                # Extract remarks and details
-                remark = "VLESS Node"
+                remark = "Aether Node"
                 if "#" in line:
                     remark = urllib.parse.unquote(line.split("#", 1)[1])
                 is_reality = "security=reality" in line
@@ -229,35 +224,30 @@ def get_qr(text: str):
 
 @app.get("/api/sub")
 def serve_subscription():
-    # Dynamic subscription endpoint for v2rayNG, Hiddify, Happ, Streisand, etc.
     nodes = []
 
-    # 1. Add WARP if generated
     if CACHE.get("warp"):
         nodes.append(CACHE["warp"]["uri"])
 
-    # 2. Add top free verified VLESS Reality nodes
     if not CACHE["free_configs"]:
         get_free_subs(limit=40)
 
     for item in CACHE["free_configs"][:40]:
         nodes.append(item["uri"])
 
-    # Combine into a clean subscription
     sub_text = "\n".join(nodes)
     encoded = base64.b64encode(sub_text.encode('utf-8')).decode('utf-8')
 
     headers = {
         "Content-Type": "text/plain; charset=utf-8",
         "Subscription-Userinfo": "upload=100; download=200; total=1073741824000; expire=2546249531",
-        "Profile-Title": "base64:" + base64.b64encode("Universal Free VPN Hub".encode('utf-8')).decode('utf-8'),
+        "Profile-Title": "base64:" + base64.b64encode("Aether VPN Hub".encode('utf-8')).decode('utf-8'),
         "Profile-Update-Interval": "2"
     }
     return Response(content=encoded, media_type="text/plain", headers=headers)
 
-# Serve static web dashboard
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 if __name__ == "__main__":
-    print("[*] Starting Universal VPN Hub on port 3101...")
+    print("[*] Starting Aether VPN Hub on port 3101...")
     uvicorn.run("server:app", host="0.0.0.0", port=3101, reload=False)
