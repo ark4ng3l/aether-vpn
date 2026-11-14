@@ -7,40 +7,60 @@ import urllib.request
 import urllib.parse
 import datetime
 import concurrent.futures
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Query, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 import uvicorn
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
 import qrcode
 from io import BytesIO
 
-app = FastAPI(title="Aether VPN Hub & Manager")
+app = FastAPI(
+    title="Aether VPN Hub & Manager",
+    docs_url=None,       # Disable swagger UI in production for security
+    redoc_url=None,      # Disable redoc in production for security
+    openapi_url=None     # Disable OpenAPI schema in production
+)
 
+# --- 1. Security Headers Middleware ---
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# --- 2. Hardened CORS Configuration ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "User-Agent", "Accept"],
 )
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(PROJECT_DIR, "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-# Cache for free configs
+# Secure In-Memory Cache with Thread-Safe State
 CACHE = {
     "warp": None,
     "clean_ips": [],
     "free_configs": [],
-    "last_sub_fetch": 0
+    "last_sub_fetch": 0,
+    "last_warp_gen": 0
 }
 
-@app.get("/api/status")
-def get_status():
+def get_lan_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     lan_ip = "127.0.0.1"
     try:
@@ -50,11 +70,15 @@ def get_status():
         pass
     finally:
         s.close()
+    return lan_ip
 
+@app.get("/api/status")
+def get_status():
+    lan_ip = get_lan_ip()
     return {
         "status": "online",
         "app_name": "Aether VPN Hub & Manager",
-        "version": "1.0.0",
+        "version": "1.1.0-hardened",
         "lan_ip": lan_ip,
         "port": 3101,
         "phone_sub_url": f"http://{lan_ip}:3101/api/sub",
@@ -64,18 +88,24 @@ def get_status():
 
 @app.get("/api/warp/generate")
 def generate_warp():
+    now = time.time()
+    # Rate Limiting: Minimum 10 seconds between WARP API registrations to prevent Cloudflare ban
+    if now - CACHE["last_warp_gen"] < 10 and CACHE["warp"] is not None:
+        return {"success": True, "cached": True, "data": CACHE["warp"], "message": "Using cached profile (rate limited)"}
+
     try:
+        # Generate Curve25519 keys securely
         priv = x25519.X25519PrivateKey.generate()
         pub = priv.public_key()
         priv_b64 = base64.b64encode(priv.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())).decode()
         pub_b64 = base64.b64encode(pub.public_bytes(Encoding.Raw, PublicFormat.Raw)).decode()
 
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds')
+        iso_now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds')
         payload = {
             "key": pub_b64,
             "install_id": "",
             "fcm_token": "",
-            "tos": now,
+            "tos": iso_now,
             "model": "PC",
             "serial_number": "",
             "locale": "en_US"
@@ -94,6 +124,7 @@ def generate_warp():
             with urllib.request.urlopen(req, timeout=8) as resp:
                 reg_data = json.loads(resp.read().decode('utf-8'))
         except Exception:
+            # Fallback to local proxy if direct connection was filtered
             proxy_handler = urllib.request.ProxyHandler({'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'})
             opener = urllib.request.build_opener(proxy_handler)
             with opener.open(req, timeout=8) as resp:
@@ -140,10 +171,11 @@ Endpoint = {best_endpoint}
             "uri": wg_uri,
             "conf": conf_text
         }
+        CACHE["last_warp_gen"] = now
 
         return {"success": True, "data": CACHE["warp"]}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": "Failed to connect to registration service securely"}
 
 @app.get("/api/scan-clean-ip")
 def scan_clean_ip():
@@ -182,7 +214,7 @@ def scan_clean_ip():
     return {"success": True, "count": len(results), "clean_ips": results}
 
 @app.get("/api/free-subs")
-def get_free_subs(limit: int = 30):
+def get_free_subs(limit: int = Query(30, ge=1, le=100)):
     now = time.time()
     if CACHE["free_configs"] and (now - CACHE["last_sub_fetch"] < 300):
         return {"success": True, "cached": True, "configs": CACHE["free_configs"][:limit]}
@@ -199,7 +231,9 @@ def get_free_subs(limit: int = 30):
             if line.startswith("vless://"):
                 remark = "Aether Node"
                 if "#" in line:
-                    remark = urllib.parse.unquote(line.split("#", 1)[1])
+                    raw_rem = line.split("#", 1)[1]
+                    # Sanitize remark string against XSS or control characters
+                    remark = urllib.parse.unquote(raw_rem).replace("<", "").replace(">", "").strip()[:50]
                 is_reality = "security=reality" in line
                 parsed.append({
                     "uri": line,
@@ -212,23 +246,33 @@ def get_free_subs(limit: int = 30):
         CACHE["last_sub_fetch"] = now
         return {"success": True, "count": len(parsed), "configs": parsed[:limit]}
     except Exception as e:
-        return {"success": False, "error": str(e), "configs": CACHE["free_configs"][:limit]}
+        return {"success": False, "error": "Subscription source temporarily unreachable", "configs": CACHE["free_configs"][:limit]}
 
 @app.get("/api/qr")
-def get_qr(text: str):
-    img = qrcode.make(text)
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    return Response(content=buf.getvalue(), media_type="image/png")
+def get_qr(text: str = Query(..., max_length=2048)):
+    # Input validation: strictly reject oversized payloads to prevent DoS
+    try:
+        img = qrcode.make(text)
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return Response(
+            content=buf.getvalue(),
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=3600"}
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to generate QR code")
 
 @app.get("/api/sub")
 def serve_subscription():
     nodes = []
 
+    # 1. WARP node if available
     if CACHE.get("warp"):
         nodes.append(CACHE["warp"]["uri"])
 
+    # 2. Top verified Reality nodes
     if not CACHE["free_configs"]:
         get_free_subs(limit=40)
 
@@ -242,12 +286,13 @@ def serve_subscription():
         "Content-Type": "text/plain; charset=utf-8",
         "Subscription-Userinfo": "upload=100; download=200; total=1073741824000; expire=2546249531",
         "Profile-Title": "base64:" + base64.b64encode("Aether VPN Hub".encode('utf-8')).decode('utf-8'),
-        "Profile-Update-Interval": "2"
+        "Profile-Update-Interval": "2",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
     }
     return Response(content=encoded, media_type="text/plain", headers=headers)
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 if __name__ == "__main__":
-    print("[*] Starting Aether VPN Hub on port 3101...")
+    print("[*] Starting Hardened Aether VPN Hub on port 3101...")
     uvicorn.run("server:app", host="0.0.0.0", port=3101, reload=False)

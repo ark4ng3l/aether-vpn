@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:;">
   <title>Aether VPN Hub & Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&display=swap" rel="stylesheet">
@@ -23,16 +24,16 @@
         <div>
           <h1 class="text-lg font-bold text-white flex items-center gap-2">
             Aether VPN Manager
-            <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">آنلاین</span>
+            <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">ایمن & آنلاین</span>
           </h1>
-          <p class="text-xs text-slate-400">تلفیق Xray + WARP + Hiddify + ۳X-UI + BPB با منابع ۱۰۰٪ رایگان</p>
+          <p class="text-xs text-slate-400">تلفیق Xray + WARP + Hiddify + ۳X-UI + BPB با امنیت سخت‌گیرانه</p>
         </div>
       </div>
 
       <!-- Quick Action / Status -->
       <div class="flex items-center gap-3">
         <a href="#phone-sub" class="hidden sm:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all shadow-md shadow-indigo-600/20">
-          📱 لینک سابسکریپشن گوشی
+          📱 سابسکریپشن موبایل
         </a>
       </div>
     </div>
@@ -96,10 +97,10 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              تولید اکانت اختصاصی Aether WARP
+              تولید اکانت امن Cloudflare WARP
             </h2>
             <p class="text-sm text-slate-400 mt-1">
-              ساخت یک‌کلیکه حساب رسمی وارپ، تولید کلید اختصاصی WireGuard و انتخاب سریع‌ترین اندپوینت بدون نیاز به ثبت‌نام.
+              تولید کلیدهای Curve25519، اتصال امن به API کلودفلر و ایجاد کانفیگ اختصاصی WireGuard با نرخ‌محدودسازی محافظتی.
             </p>
           </div>
           <button onclick="generateWarp()" id="btn-gen-warp" class="bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
@@ -137,7 +138,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 class="text-xl font-bold text-white">مخزن سرورهای لایو VLESS Reality</h2>
-            <p class="text-sm text-slate-400 mt-1">سرورهای تست‌شده و فعال از سراسر دنیا که مداوم به‌روزرسانی می‌شوند.</p>
+            <p class="text-sm text-slate-400 mt-1">سرورهای تست‌شده و پالایش‌شده با ایمن‌سازی کامل خروجی در برابر حملات تزریق کد.</p>
           </div>
           <button onclick="loadSubs()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2">
             🔄 به‌روزرسانی لیست سرورها
@@ -246,9 +247,13 @@
       });
       document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
 
-      document.getElementById('tab-btn-' + tab).classList.add('bg-indigo-600', 'text-white');
-      document.getElementById('tab-btn-' + tab).classList.remove('text-slate-400');
-      document.getElementById('tab-' + tab).classList.remove('hidden');
+      const activeBtn = document.getElementById('tab-btn-' + tab);
+      const activeContent = document.getElementById('tab-' + tab);
+      if (activeBtn && activeContent) {
+        activeBtn.classList.add('bg-indigo-600', 'text-white');
+        activeBtn.classList.remove('text-slate-400');
+        activeContent.classList.remove('hidden');
+      }
 
       if (tab === 'subs') loadSubs();
     }
@@ -257,17 +262,17 @@
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
-        document.getElementById('stat-ip').innerText = data.lan_ip;
+        document.getElementById('stat-ip').textContent = data.lan_ip;
         document.getElementById('phone-sub-url').value = data.phone_sub_url;
         document.getElementById('sub-qr-img').src = '/api/qr?text=' + encodeURIComponent(data.phone_sub_url);
       } catch (e) {
-        console.error(e);
+        console.error('Initialization error:', e);
       }
     }
 
     async function generateWarp() {
       const btn = document.getElementById('btn-gen-warp');
-      btn.innerText = 'در حال تولید کلید و ثبت اکانت...';
+      btn.textContent = 'در حال تولید کلید و ثبت اکانت...';
       btn.disabled = true;
 
       try {
@@ -276,95 +281,167 @@
         if (r.success) {
           const d = r.data;
           document.getElementById('warp-uri-input').value = d.uri;
-          document.getElementById('warp-endpoint-badge').innerText = 'اندپوینت: ' + d.endpoint;
-          document.getElementById('warp-ip-badge').innerText = 'آی‌پی: ' + d.v4;
-          document.getElementById('stat-warp').innerText = 'فعال و متصل';
+          document.getElementById('warp-endpoint-badge').textContent = 'اندپوینت: ' + d.endpoint;
+          document.getElementById('warp-ip-badge').textContent = 'آی‌پی: ' + d.v4;
+          document.getElementById('stat-warp').textContent = 'فعال و متصل';
 
-          document.getElementById('warp-qr-box').innerHTML = `
-            <img src="/api/qr?text=${encodeURIComponent(d.uri)}" class="w-full h-full object-contain rounded-xl" />
-          `;
+          const qrBox = document.getElementById('warp-qr-box');
+          qrBox.textContent = '';
+          const img = document.createElement('img');
+          img.src = '/api/qr?text=' + encodeURIComponent(d.uri);
+          img.className = 'w-full h-full object-contain rounded-xl';
+          img.alt = 'WARP QR';
+          qrBox.appendChild(img);
         } else {
-          alert('خطا در تولید وارپ: ' + r.error);
+          alert('خطا در تولید وارپ: ' + (r.error || 'ناشناخته'));
         }
       } catch (err) {
         alert('خطای ارتباط با سرور: ' + err);
       } finally {
-        btn.innerText = '✨ ساخت کانفیگ جدید وارپ';
+        btn.textContent = '✨ ساخت کانفیگ جدید وارپ';
         btn.disabled = false;
       }
     }
 
+    // Secure DOM rendering to eliminate XSS
     async function loadSubs() {
       const box = document.getElementById('subs-list');
-      box.innerHTML = '<div class="text-center py-6 text-slate-400">در حال دریافت و اعتبارسنجی سرورها...</div>';
+      box.textContent = '';
+      const loading = document.createElement('div');
+      loading.className = 'text-center py-6 text-slate-400';
+      loading.textContent = 'در حال دریافت و اعتبارسنجی سرورها...';
+      box.appendChild(loading);
 
       try {
         const res = await fetch('/api/free-subs?limit=30');
         const r = await res.json();
+        box.textContent = '';
+
         if (r.success && r.configs) {
-          box.innerHTML = '';
           r.configs.forEach((item, idx) => {
             const div = document.createElement('div');
             div.className = 'p-3 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between text-xs gap-3 hover:border-slate-700 transition';
-            div.innerHTML = `
-              <div class="flex items-center gap-2.5 truncate">
-                <span class="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[10px]">${idx + 1}</span>
-                <span class="font-medium text-slate-200 truncate">${item.remark}</span>
-                <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">${item.type}</span>
-              </div>
-              <button onclick="navigator.clipboard.writeText('${item.uri}'); alert('کانفیگ کپی شد!');" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition whitespace-nowrap">
-                کپی کانفیگ
-              </button>
-            `;
+
+            const left = document.createElement('div');
+            left.className = 'flex items-center gap-2.5 truncate';
+
+            const badge = document.createElement('span');
+            badge.className = 'w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[10px]';
+            badge.textContent = idx + 1;
+
+            const name = document.createElement('span');
+            name.className = 'font-medium text-slate-200 truncate';
+            name.textContent = item.remark || 'VLESS Node';
+
+            const type = document.createElement('span');
+            type.className = 'px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400';
+            type.textContent = item.type || 'Reality';
+
+            left.appendChild(badge);
+            left.appendChild(name);
+            left.appendChild(type);
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition whitespace-nowrap';
+            copyBtn.textContent = 'کپی کانفیگ';
+            copyBtn.addEventListener('click', () => {
+              navigator.clipboard.writeText(item.uri);
+              alert('کانفیگ با موفقیت کپی شد!');
+            });
+
+            div.appendChild(left);
+            div.appendChild(copyBtn);
             box.appendChild(div);
           });
         }
       } catch (e) {
-        box.innerHTML = '<div class="text-center py-6 text-rose-400">خطا در بارگذاری سرورها</div>';
+        box.textContent = '';
+        const errDiv = document.createElement('div');
+        errDiv.className = 'text-center py-6 text-rose-400';
+        errDiv.textContent = 'خطا در بارگذاری سرورها';
+        box.appendChild(errDiv);
       }
     }
 
+    // Secure DOM rendering for clean IP results
     async function runCleanIpScan() {
       const btn = document.getElementById('btn-scan');
       const box = document.getElementById('cleanip-results');
-      btn.innerText = 'در حال تست پکت‌ها...';
+      btn.textContent = 'در حال تست پکت‌ها...';
       btn.disabled = true;
-      box.innerHTML = '<div class="text-center py-6 text-slate-400">در حال اسکن رنج‌های 162.159.x.x و 188.114.x.x...</div>';
+
+      box.textContent = '';
+      const scanning = document.createElement('div');
+      scanning.className = 'text-center py-6 text-slate-400';
+      scanning.textContent = 'در حال اسکن رنج‌های کلودفلر...';
+      box.appendChild(scanning);
 
       try {
         const res = await fetch('/api/scan-clean-ip');
         const r = await res.json();
+        box.textContent = '';
+
         if (r.success && r.clean_ips) {
-          box.innerHTML = '';
           r.clean_ips.forEach(c => {
             const div = document.createElement('div');
             div.className = 'p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs';
-            div.innerHTML = `
-              <div class="flex items-center gap-3">
-                <span class="font-mono text-emerald-400 font-bold">${c.ip}:${c.port}</span>
-                <span class="text-slate-400">${c.type}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded font-mono ${c.latency < 80 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${c.latency} ms</span>
-                <button onclick="navigator.clipboard.writeText('${c.ip}'); alert('آی‌پی کپی شد: ${c.ip}');" class="bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1 rounded">کپی آی‌پی</button>
-              </div>
-            `;
+
+            const left = document.createElement('div');
+            left.className = 'flex items-center gap-3';
+
+            const ipText = document.createElement('span');
+            ipText.className = 'font-mono text-emerald-400 font-bold';
+            ipText.textContent = c.ip + ':' + c.port;
+
+            const proto = document.createElement('span');
+            proto.className = 'text-slate-400';
+            proto.textContent = c.type;
+
+            left.appendChild(ipText);
+            left.appendChild(proto);
+
+            const right = document.createElement('div');
+            right.className = 'flex items-center gap-2';
+
+            const lat = document.createElement('span');
+            lat.className = 'px-2 py-0.5 rounded font-mono ' + (c.latency < 80 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400');
+            lat.textContent = c.latency + ' ms';
+
+            const copyIpBtn = document.createElement('button');
+            copyIpBtn.className = 'bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1 rounded';
+            copyIpBtn.textContent = 'کپی آی‌پی';
+            copyIpBtn.addEventListener('click', () => {
+              navigator.clipboard.writeText(c.ip);
+              alert('آی‌پی کپی شد: ' + c.ip);
+            });
+
+            right.appendChild(lat);
+            right.appendChild(copyIpBtn);
+
+            div.appendChild(left);
+            div.appendChild(right);
             box.appendChild(div);
           });
         }
       } catch (e) {
-        box.innerHTML = '<div class="text-center py-6 text-rose-400">خطا در اسکن آی‌پی</div>';
+        box.textContent = '';
+        const errDiv = document.createElement('div');
+        errDiv.className = 'text-center py-6 text-rose-400';
+        errDiv.textContent = 'خطا در اسکن آی‌پی';
+        box.appendChild(errDiv);
       } finally {
-        btn.innerText = '⚡ شروع اسکن زنده';
+        btn.textContent = '⚡ شروع اسکن زنده';
         btn.disabled = false;
       }
     }
 
     function copyToClipboard(id) {
       const el = document.getElementById(id);
-      el.select();
-      navigator.clipboard.writeText(el.value);
-      alert('در کلیپ‌بورد کپی شد!');
+      if (el) {
+        el.select();
+        navigator.clipboard.writeText(el.value);
+        alert('در کلیپ‌بورد کپی شد!');
+      }
     }
 
     init();
