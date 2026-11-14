@@ -11,8 +11,13 @@
 
 ```mermaid
 flowchart TD
-    User["کلاینت / گوشی / کامپیوتر"] -->|"دریافت هوشمند (/api/sub)"| Hub["Universal VPN Hub (Port 3101)"]
+    User["کلاینت / گوشی / کامپیوتر"] -->|"دریافت هوشمند (/api/sub)"| Hub["Universal VPN Hub"]
     
+    subgraph DeployOptions["روش‌های استقرار"]
+        Hub --> Local["لوکال / اپلیکیشن (Port 3101)"]
+        Hub --> CF["کلودفلر سرورلس (Cloudflare Pages & Workers)"]
+    end
+
     subgraph FreeResources["منابع و هسته‌های تلفیق‌شده"]
         Hub -->|"تولید کلید و اسکن اختصاصی"| W["Cloudflare WARP (WireGuard)"]
         Hub -->|"پالایش و تست زنده"| R["VLESS Reality (Xray Core)"]
@@ -29,25 +34,23 @@ flowchart TD
 * **🎁 مخزن سرورهای لایو VLESS Reality:** تجمیع و پایش مداوم بیش از ۶,۴۰۰ سرور فعال از سراسر دنیا بدون نیاز به خرید سرور.
 * **🔍 اسکنر اختصاصی Clean IP:** اسکن رنج‌های بدون فیلتر کلودفلر در اینترنت ایران به منظور دستیابی به حداکثر سرعت دانلود.
 * **📱 سرور سابسکریپشن هوشمند موبایل (`/api/sub`):** ارائه لینک سابسکریپشن داینامیک و بارکد QR سازگار با تمامی کلاینت‌های اندروید و آیفون (v2rayNG, Hiddify, Happ, Streisand, V2Box).
+* **☁️ قابلیت استقرار ۲ گانه:** هم به صورت پنل لوکال پایتون و هم به صورت پنل سرورلس روی **Cloudflare Workers / Pages** بدون نیاز به روشن ماندن سیستم.
 * **🎨 داشبورد وب مدرن و واکنش‌گرا:** رابط کاربری دارک‌مود با پشتیبانی کامل از زبان فارسی و قابلیت اجرا در مرورگر موبایل و دسکتاپ.
 
 ---
 
 ## 🛠️ نحوه نصب و اجرا (Quick Start)
 
-### پیش‌نیازها:
-* Python 3.10+
-* نصب نیازمندی‌ها:
+### روش ۱: اجرای لوکال (Local Dashboard)
 ```bash
 pip install fastapi uvicorn cryptography qrcode pillow
-```
-
-### اجرا:
-```bash
 python server.py
 ```
 سپس در مرورگر خود آدرس زیر را باز کنید:
 👉 `http://localhost:3101`
+
+### روش ۲: استقرار سرورلس روی Cloudflare Pages / Workers
+با الهام از معماری BPB، کدهای فرانت‌اند و ورکر را مستقیماً روی پلن رایگان Cloudflare Pages دیپلوی کنید تا بدون نیاز به سیستم روشن، پنل همیشه از هر کجای دنیا در دسترس باشد.
 
 ---
 
@@ -57,6 +60,7 @@ python server.py
 
 | پروژه / مرجع | توسعه‌دهنده / سازمان | نقش و الهام در این پروژه |
 | :--- | :--- | :--- |
+| **[BPB-Worker-Panel](https://github.com/bia-pain-bache/BPB-Worker-Panel)** | **@bia-pain-bache** | **شاهکار و پیشگام معماری پنل‌های سرورلس و استقرار پنل وب روی Cloudflare Workers/Pages و دیتابیس KV** |
 | **[Xray-core](https://github.com/XTLS/Xray-core)** | **Team XTLS & @rprx** | خالق پروتکل‌های انقلابی VLESS و REALITY و موتور پردازش ترافیک مدرن |
 | **[PurVPN](https://github.com/davudsedft/purvpn)** | **@davudsedft** | الهام‌بخش رویکرد همه‌فن‌حریف (All-in-One)، تونلینگ ترکیبی و پیاده‌سازی WARP |
 | **[Hiddify-Manager](https://github.com/hiddify/Hiddify-Manager)** | **@hiddify Team** | الگوی طلایی استقرار خودکار، معماری چندکاربره و پرتال هوشمند سابسکریپشن |
